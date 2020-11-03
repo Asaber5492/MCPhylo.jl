@@ -71,10 +71,10 @@ function insupport(d::CompoundDirichlet, x::T) where T <: GeneralNode
 end # function insupport
 
 
-function logpdf_sub(d::ContinuousUnivariateDistribution, x::T, transform::Bool) where T <: GeneralNode
+function logpdf_sub(d::CompoundDirichlet, x::T, transform::Bool) where T <: GeneralNode
     insupport(d, x) ? _logpdf(d, x) : -Inf
 end
-
+    
 
 mutable struct exponentialBL <: ContinuousUnivariateDistribution
     scale::Float64
