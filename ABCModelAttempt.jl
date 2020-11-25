@@ -2,6 +2,7 @@ using Revise
 using MCPhylo
 using Distributions
 
+# Marisas Kommentar
 mutable struct ContactDist{T<:GeneralNode, D<:Distribution, F<:Distribution}
     tree::T
     opening_params::Array{Float64}
