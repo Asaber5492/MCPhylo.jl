@@ -3,21 +3,23 @@ mutable struct BrownianDistr <: DiscreteMatrixDistribution
     Σ_L_Arr::Array{Float64,3}
     latent::Array{Float64,2}
     dim::Tuple{Int64,Int64}
+    covmats::Array{Float64,3}
 
     function BrownianDistr(μ_Arr::Array{Float64,2}, Σ_L_Arr::Array{Float64,3}, latent::Array{Float64,2})
-        new(μ_Arr, Σ_L_Arr, latent, (size(Σ_L_Arr,2), size(Σ_L_Arr,1)))
+        new(μ_Arr, Σ_L_Arr, latent, (size(Σ_L_Arr,1), size(Σ_L_Arr,3)), ones(3,3,3))
     end
 
     function BrownianDistr(μ::Array{Float64,1}, σ::Array{Float64,1}, Σ::Array{Float64}, latent::Array{Float64,2})
         n_concs = size(μ,1)
         n_leaves = size(Σ,1)
 
-        Σ_L_Arr = Array{Float64,3}(undef, n_concs, n_leaves, n_leaves)
+        Σ_L_Arr = Array{Float64,3}(undef, n_leaves, n_leaves, n_concs)
         μ_Arr::Array{Float64,2} = reshape(repeat(μ, outer=n_leaves), n_concs, n_leaves)
         @inbounds @simd for i in 1:n_concs
-            Σ_L_Arr[i, :, :] .= cholesky(σ[i] .* Σ).L
+            covmats[:, :, i] .= σ[i] .* Σ
+            Σ_L_Arr[:, :, i] .= cholesky(covmats[:, :, i]).L
         end
-        new(μ_Arr, Σ_L_Arr, latent, (size(Σ,1), n_concs))
+        new(μ_Arr, Σ_L_Arr, latent, (size(Σ,1), n_concs), covmats)
     end
 end
 
@@ -37,14 +39,25 @@ Base.size(d::BrownianDistr) = d.dim
 sampler(d::BrownianDistr) = Sampleable{MatrixVariate,Discrete}
 
 function logpdf(d::BrownianDistr, x::Array{Float64,2})
-    return 0
+    langs, concs = size(x)
+    res = 0
+    println(size(d.Σ_L_Arr))
+    for i in 1:concs
+        res += sum(logpdf.(Bernoulli.(invlogit.(d.latent[:, i])), x[:,i]))
+        mv_c0 = -(langs*Distributions.log2π+2*sum(log.(diag(d.Σ_L_Arr[:, :, i]))))/2
+
+
+        invq = sum(abs2, d.Σ_L_Arr[:, :, i] \ Vector(x[:, i]))/2
+        res += (mv_c0 -invq)
+    end
+    return res
 end
+
 
 function _rand!(r::A, d::BrownianDistr, x::AbstractMatrix) where A <: AbstractRNG
     n_leaves, n_concs = d.dim
     @inbounds @simd for i in 1:n_concs
-        x[:,i] .= Int.(rand.(Bernoulli.(invlogit.(d.μ_Arr[i,:] + BLAS.gemv('N',1.0,d.Σ_L_Arr[i, :, :], d.latent[i, :])))))
-        #x[:,i] .= Int.(rand.(Bernoulli.(invlogit.(rand(MvNormal(μ_arr[i,:], d.σ[i].*d.Σ))))))
+        x[:,i] .= Int.(rand.(Bernoulli.(invlogit.(d.μ_Arr[i,:] + BLAS.gemv('N',1.0,d.Σ_L_Arr[:, :, i], d.latent[i, :])))))
     end
     return x
 end

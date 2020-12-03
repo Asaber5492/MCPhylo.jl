@@ -82,7 +82,6 @@ function make_tree_with_data(filename::String, dialect::AbstractString="nexus",
         mn = find_by_name(new_tree, row.Language)
         mind = mn.num
         for (ind, i) in enumerate(row.Data)
-
             if i == '0'
                 my_df[1,ind,mind] = 1.0
                 my_df[2,ind, mind] = 0.0

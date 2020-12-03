@@ -10,7 +10,7 @@ using LinearAlgebra
 include("BrownianDistr.jl")
 #include("TreeSugg.jl")
 
-mt, df = make_tree_with_data("notebook/data-st-64-110.paps.nex"); # load your own nexus file
+mt, df = make_tree_with_data("notebook/Dravidian.cc.phy.nex"); # load your own nexus file
 
 n_leaves = length(MCPhylo.get_leaves(mt))
 n_concs = size(df, 2)
@@ -59,9 +59,9 @@ end
 function my_ELARR(Σ::Array{Float64,2}, σ::Array{Float64})
     n_concs = length(σ)
     n_leaves = size(Σ, 1)
-    Σ_L_Arr = Array{Float64,3}(undef, n_concs, n_leaves, n_leaves)
+    Σ_L_Arr = Array{Float64,3}(undef, n_leaves, n_leaves,n_concs)
     @inbounds @simd for i in 1:n_concs
-        Σ_L_Arr[i, :, :] .= cholesky(σ[i] .* Σ).L
+        Σ_L_Arr[:, :, i] .= cholesky(σ[i] .* Σ).L
     end
     Σ_L_Arr
 end
@@ -95,7 +95,7 @@ inits = [Dict{Symbol, Union{Any, Real}}(
     :residuals => my_data[:residuals],
     :leaves => my_data[:leaves],
     :μ_raw => my_data[:μ_raw],
-    :latent => rand(my_data[:residuals],my_data[:leaves]),
+    :latent => rand(my_data[:leaves], my_data[:residuals]),
     :Σ => MCPhylo.to_covariance(mt),
     :μH => rand(),
     :σH => rand(),
@@ -119,12 +119,13 @@ inits = [Dict{Symbol, Union{Any, Real}}(
         )
     ]
 
-scheme = [ABC([:μ,:σ], 1.0, identity, 100, proposal=Normal, kernel=Normal, maxdraw=25, nsim=3, dist=hamming),
-          ABC(:latent, 1.0, identity, 100, proposal=Normal, kernel=Normal, maxdraw=25, nsim=3, dist=hamming),
-          MCPhylo.ABCT(:mtree, 0.5, identity, 100, proposal=symtreeprob,kernel=Normal, maxdraw=100, nsim=3, dist=hamming),
-          #Slice([:μH, :σH, :λ], 0.05, Multivariate)
+scheme = [#ABC([:μ,:σ], 1.0, identity, 100, proposal=Normal, kernel=Normal, maxdraw=25, nsim=3, dist=hamming),
+          #ABC(:latent, 1.0, identity, 100, proposal=Normal, kernel=Normal, maxdraw=25, nsim=3, dist=hamming),
+          #MCPhylo.ABCT(:mtree, 0.5, identity, 100, proposal=symtreeprob,kernel=Normal, maxdraw=100, nsim=3, dist=hamming),
+          RWM(:mtree, :all),
+          Slice(:σ, 0.05, Multivariate),
           #NUTS([:μH, :σH]),# dtype=:Zygote),
-          NUTS(:λ)
+          NUTS(:λ, dtype =:Zygote)
           ];
 
 setsamplers!(model, scheme)
