@@ -56,7 +56,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
     # initialize Lexicon
     Lexica = Dict{Int64, Vector{String}}()
     # initialize Phylogenies
-    Phylogenies = [Node(string(i)) for i in 1:k]
+    #Phylogenies = [Node(string(i)) for i in 1:k]
     indexer = Dict{Int64, Int64}()
     for i in 1:k
         indexer[i] = i
@@ -103,11 +103,11 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                     Lexica[k] = L1
                     # get correct Phylogeny
                     phylo_ind = indexer[l_ind]
-                    tree = Phylogenies[phylo_ind]
-                    mother_node = find_by_name(tree, string(l_ind))
+                    #tree = Phylogenies[phylo_ind]
+                    #mother_node = find_by_name(tree, string(l_ind))
                     # add new language to tree
-                    l1_node = Node(string(k))
-                    add_child!(mother_node, l1_node)
+                    #l1_node = Node(string(k))
+                    #add_child!(mother_node, l1_node)
                     indexer[k] = phylo_ind
                     # find position of mother language
                     pos_L = findfirst(x-> x==l_ind, Landscape)
@@ -116,8 +116,8 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                     Lexica[k] = L2
                     # add new language to tree
                     indexer[k] = phylo_ind
-                    l2_node = Node(string(k))
-                    add_child!(mother_node, l2_node)
+                    #l2_node = Node(string(k))
+                    #add_child!(mother_node, l2_node)
                     pos_L2 = find_new_home(Landscape, pos_L)
                     if Landscape[pos_L2] != -1
                         # wipe out language living in new home
@@ -166,7 +166,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
         # go one step further in time
         t += 1
     end
-    return Landscape, Lexica, Phylogenies
+    return Landscape, Lexica#, Phylogenies
 end
 
 
@@ -202,4 +202,9 @@ function find_new_home(landscape, pos_l)
     end
 end
 
-landscape, lexika, phylos = SimulateNetwork(2, 500, 10, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
+landscape, lexika = SimulateNetwork(2, 500, 10, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
+"""
+Write Function that counts origins of words of language
+For each langauge return vector of length = #languages
+at each language index store share of this langauages vocabulary
+"""
