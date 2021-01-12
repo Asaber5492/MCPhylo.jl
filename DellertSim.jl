@@ -203,7 +203,10 @@ function find_new_home(landscape, pos_l)
 end
 
 landscape, lexika = SimulateNetwork(2, 500, 10, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
+
 """
+Marisa ToDo:
+
 Write Function that counts origins of words of language
 For each langauge return vector of length = #languages
 at each language index store share of this langauages vocabulary
