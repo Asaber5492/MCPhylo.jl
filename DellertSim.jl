@@ -6,7 +6,7 @@ Random.seed!(42)
 using LinearAlgebra
 include("./src/MCPhylo.jl")
 using .MCPhylo
-
+using StatsBase
 """
 Nice 2 Know
 
@@ -220,3 +220,25 @@ Write Function that counts origins of words of language
 For each langauge return vector of length = #languages
 at each language index store share of this langauages vocabulary
 """
+
+
+function language_origin(lexika)
+#    initialize Dict for summary statistics
+    Sum_stats = Dict{Int64, Vector{Float64}}()
+    # get length of lexika = number of languages
+    num_langs = length(lexika)
+    for (recipient, word_lexika) in lexika
+        # get the number of words in the lexika of the language
+        num_words = length(word_lexika)
+
+        Sum_stats[recipient] = zeros(num_langs)
+        # for each word get the origin language
+        origin_langs = parse.(Int64,first.(split(lang,"_") for lang in word_lexika))
+        # count the occurance of the origin languages
+        c = countmap(origin_langs)
+        for (k,v) in c
+            Sum_stats[recipient][k] =  v/num_words
+        end
+    end
+    return Sum_stats
+end
