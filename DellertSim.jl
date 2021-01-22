@@ -46,7 +46,8 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
     3. Start simulation according to Pseudocode
 
 
-    ToDo: Include Trees
+    ToDo: - Include Timedepth in trees
+          - Keep Track of Loanwords in a Languages Lexicon --> Disable replacement of loanwords
     """
     # check that the grid is big enough to hold proto languages
     @assert gs^2 > k
@@ -56,7 +57,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
     Landscape = Array{Int64, 2}(undef, gs, gs)
     Landscape .= -1
     # initialize Lexicon
-    Lexica = Dict{Int64, Vector{String}}()
+    Lexica = Dict{Int64, Vector{Int64}}()
     # initialize Phylogenies
     Phylogenies = [Node(string(i)) for i in 1:k]
     indexer = Dict{Int64, Int64}()
@@ -86,7 +87,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
         end
         # a word: 1_adsu8
         # concept identifier not necessary, since no semantic shift present
-        Lexica[l_ind] = [string(l_ind)*"_"*randstring(5) for i in 1:n]
+        Lexica[l_ind] = zeros(Int64, n) .= l_ind#[string(l_ind)*"_"*randstring(5) for i in 1:n]
     end
 
     # start simulating history
@@ -133,11 +134,53 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
         end # end for l_ind in 1:k
 
         # 2. Simulate evolution of words
+        """
+        Fallunterscheidung in den Experimenten machen:
+            1. Fall: keine Evolution of Loanwords
+                Begründung: Wenn ein Wort entlehnt wurde gab es eine Lücke. Das
+                            entlehnte Wort durch ein neues eigenes Wort zu ersetzen
+                            ist unökonomisch. Sprachinterne Evolution ist für die
+                            Summarystatisitcs und unsere Fragestellung nicht relevant.
+            2. Fall: Evolution of Loanwords
+                Begründung: Es besteht die Möglichkeit, das Sprachkontakt verwässert
+                            über die Zeit und ein intensiver Kontakt nicht mehr so
+                            sichtbar ist, da entlehnte Wörter durch Sprachwandelprozesse
+                            ersetzt wurden, z.B. Semantischer Wandel, Register, Frequenz.
+                            Fragestellung: Kann verwässerter Kontakt noch gefunden werden?
+        Need vs. Prestige
+        Beispiele:
+            Geldbörse vs. Portmonaie
+            Gehweg vs. Trottoir
+        Followup diskussion: Kommen diese Beispiele in Swadeshlisten vor?
+        Interaktion von Evolution und Kontaktintensität
+        """
+
         for (l_ind, alive) in enumerate(Living)
             if alive
                 for c_ind in 1:n
                     if rand() < ρ
-                        Lexica[l_ind][c_ind] = string(l_ind)*"_"*randstring(5)
+                        Lexica[l_ind][c_ind] = l_ind#string(l_ind)*"_"*randstring(5)
+                        """
+                        1. Fall
+                        Language in Question: 1
+                        a) 2 is not an ancestral Language
+                            CONTACT
+                            1: [1, 1, 2, 3, 1]              [1, 1, 2, 3, 2]
+                            ==> intraceable contact            less traceable
+                               [1, 1, 1, 3, 1]              [1, 1, 1, 3, 2]
+                       b) 2 is an ancestral Language
+                           NO CONTACT
+                           1: [1, 1, 2, 3, 1]
+                                Replace ancestral Form
+                              [1, 1, 1, 3, 1]
+
+                        Irrelevant:
+                        2. Fall
+                        1: [1, 1, 2, 3, 1]
+                        ==>
+                           [1, 1', 2, 3, 1]
+                        """
+
                     end
                 end
             end
@@ -175,7 +218,15 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
         # go one step further in time
         t += 1
     end
-    return Landscape, Lexica, Phylogenies, Reticulation_dict
+
+    # Turn Lexica dictionary into Matrix
+    Lexica_array = Array{Int64, 2}(undef, length(Lexica), n)
+    for (lang, words) in Lexica
+        Lexica_array[lang, :] .= words
+    end
+
+
+    return Landscape, Lexica_array, Phylogenies, Reticulation_dict
 end
 
 
@@ -211,7 +262,7 @@ function find_new_home(landscape, pos_l)
     end
 end
 
-landscape, lexika, phylo, Retdict = SimulateNetwork(2, 500, 10, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
+landscape, lexika, phylo, Retdict = SimulateNetwork(1, 5000, 100, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
 
 """
 Marisa ToDo:
@@ -222,22 +273,17 @@ at each language index store share of this langauages vocabulary
 """
 
 
-function language_origin(lexika)
-#    initialize Dict for summary statistics
-    Sum_stats = Dict{Int64, Vector{Float64}}()
-    # get length of lexika = number of languages
-    num_langs = length(lexika)
-    for (recipient, word_lexika) in lexika
-        # get the number of words in the lexika of the language
-        num_words = length(word_lexika)
-
-        Sum_stats[recipient] = zeros(num_langs)
-        # for each word get the origin language
-        origin_langs = parse.(Int64,first.(split(lang,"_") for lang in word_lexika))
+function language_origin_statistics(lexika::Array{Int64, 2})::Array{Float64, 2}
+    # get number of languages
+    num_langs = size(lexika, 1)
+    # get number of words
+    num_words = size(lexika, 2)
+    Sum_stats = zeros(num_langs, num_langs)
+    @inbounds for recipient in 1:num_langs
         # count the occurance of the origin languages
-        c = countmap(origin_langs)
+        c = countmap(lexika[recipient, :])
         for (k,v) in c
-            Sum_stats[recipient][k] =  v/num_words
+            Sum_stats[recipient, k] =  v/num_words
         end
     end
     return Sum_stats
