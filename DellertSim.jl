@@ -98,6 +98,10 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
         for l_ind in 1:curr_k
             # language branches of
             if Living[l_ind] # equivalent to Living[l_ind] == true
+                # get correct Phylogeny
+                phylo_ind = indexer[l_ind]
+                tree = Phylogenies[phylo_ind]
+                mother_node = find_by_name(tree, string(l_ind))
                 if rand() < σ
                     L1 = deepcopy(Lexica[l_ind])
                     L2 = deepcopy(Lexica[l_ind])
@@ -106,12 +110,10 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                     push!(Living, true)
                     k += 1
                     Lexica[k] = L1
-                    # get correct Phylogeny
-                    phylo_ind = indexer[l_ind]
-                    tree = Phylogenies[phylo_ind]
-                    mother_node = find_by_name(tree, string(l_ind))
+
                     #add new language to tree
                     l1_node = Node(string(k))
+                    l1_node.inc_length = 1.0
                     add_child!(mother_node, l1_node)
                     indexer[k] = phylo_ind
                     # find position of mother language
@@ -122,6 +124,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                     # add new language to tree
                     indexer[k] = phylo_ind
                     l2_node = Node(string(k))
+                    l2_node.inc_length = 1.0
                     add_child!(mother_node, l2_node)
                     pos_L2 = find_new_home(Landscape, pos_L)
                     if Landscape[pos_L2] != -1
@@ -129,7 +132,10 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                         Living[Landscape[pos_L2]] = false
                     end
                     Landscape[pos_L2] = k
+                else
+                    mother_node.inc_length += 1
                 end # end if rand() < σ
+                Phylogenies[phylo_ind] = tree
             end # end if Living[l_ind]
         end # end for l_ind in 1:k
 
@@ -207,7 +213,7 @@ function SimulateNetwork(k::Int64, tmax::Int64, n::Int64, ρ::Float64,
                 end
                 if τ_dict[t_key] > 0
                     for c_ind in 1:n
-                        if rand() < β*τ_dict[t_key]
+                        if rand() < β*τ_dict[t_key] # loan probability weighted by distance
                             push!(Reticulation_dict[l_ind_1], l_ind_2)
                             Lexica[l_ind_2][c_ind] = Lexica[l_ind_1][c_ind]
                         end
@@ -262,7 +268,7 @@ function find_new_home(landscape, pos_l)
     end
 end
 
-landscape, lexika, phylo, Retdict = SimulateNetwork(1, 5000, 100, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
+landscape, lexika, phylo, Retdict = SimulateNetwork(1, 500, 100, 0.001, 0.5, 0.005, 0.5, 0.5, 0.5,0.5, 7)
 
 """
 Marisa ToDo:
