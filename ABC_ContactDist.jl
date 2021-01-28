@@ -67,6 +67,7 @@ mutable struct ContactDist{T<:GeneralNode} <: DiscreteMatrixDistribution
     τ::Float64 # channel strength
     #gs::Int64  # gridsize
     reticulation_mat::Array{Float64,2} # Matrix indicating if reticulations are present
+    nsteps::Int64
 end # mutable struct
 
 minimum(d::ContactDist) = -Inf
@@ -101,27 +102,24 @@ Nicht Layerübergreifend: Pro Layer eine Reticulation Matrix, die Kontakt nur f�
 IMPORTANT: Tree height flip!!!
 """
 function _rand!(r::A, d::ContactDist, x::AbstractMatrix) where A <: AbstractRNG
-    # Here Comes our function
-    nsteps = 500 # number of layers
-
     height = tree_height(d.tree)
-
     po = post_order(d.tree)
     sort!(po, by=x->x.num)
-    height_list = node_height.(po) # ordered by node num
-
+    #height_list = node_height.(po) # ordered by node num
+    lifespan_array = lifespan(d.tree)
     n_langs, n_words = size(x)
     upper = lower = 0.0
-    for i in 1:nsteps
+    for i in 1:d.nsteps
         upper = i/nsteps*height # time range of current layer
         # find living languages
-        living_inds = lower .< height_list .< upper
+        living_inds = (lower .< lifespan_array[1, :]) .& (lifespan_array[1, :] .< upper)
+
         # indices of all the langauges alive in current layer
         living_languages = findall(x-> x==true, living_inds)
         for alive in living_languages
             # evolve words
-            for c_ind in 1:n_words       # [r, r, a, b]    # [r, b, a, b]
-                if rand() < d.ρ          # [a, r, a, b]    # [a, c, a, b]
+            for c_ind in 1:n_words
+                if rand() < d.ρ
                     x[alive, c_ind] = alive
                 end
             end
@@ -158,7 +156,53 @@ function _rand!(r::A, d::ContactDist, x::AbstractMatrix) where A <: AbstractRNG
                     end
                 end
             end
+end
 
 
+function create_reticulation_mat(lifespan_array, nret)
+    _, n_lang = size(lifespan_array)
+    Ret_Array = zeros(n_lang, n_lang)
+    active_rets = Set()
+    tried_rets = Set()
+    i = 0
+    ret_pairs = shuffle(zip(1:n_lang, 1:n_lang))
+    while i != nret
+        length(tried_rets) == n_lang*n_lang && throw("Not possible")
+        ret = rand()
+        push!(tried_rets, ret)
+        if !(ret in active_rets)
+            l1, l2 = ret
+            b1, _ = lifespan_array[:, l1]
+            _ , d2 = lifespan_array[:, l2]
+            if b1 < d2
+                Ret_Array[l1, l2] = 1
+                i += 1
+                push!(active_rets, ret)
+            end
+        end
+    end
+    Ret_Array
 
+end
+
+
+function lifespan(tree)
+    po = post_order(tree)
+    BD_array = Array{Float64, 2}(undef, 2, length(po))
+    lifespan_recursor(tree, BD_array)
+    BD_array
+end
+
+function lifespan_recursor(tree, BD_array)
+    if tree.root
+        BD_array[:, tree.num] .= 0.0
+    else
+        b = BD_array[2, tree.mother.num]
+        d = b+tree.inc_length
+        BD_array[1, tree.num] = b
+        BD_array[2, tree.num] = d
+    end
+    for child in tree.children
+        lifespan_recursor(child, BD_array)
+    end
 end
