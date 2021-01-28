@@ -118,7 +118,7 @@ inits = [Dict{Symbol, Union{Any, Real}}(
 
 scheme = [ABC(:μ, 0.5, identity, 0.5, kernel=Normal, maxdraw=100, nsim=3, dist=hamming),
           ABC(:σ, 0.5, identity, 0.5, kernel=Normal, maxdraw=100, nsim=3, dist=hamming),
-          MCPhylo.ABCT(:mtree, 0.5, identity, 0.5, kernel=Normal, proposal=symtreeprob,maxdraw=100, nsim=3, dist=hamming),
+          ABCT(:mtree, 0.5, identity, 0.5, kernel=Normal, proposal=symtreeprob,maxdraw=100, nsim=3, dist=hamming),
           Slice([:μH, :σH, :λ], 0.05, Univariate)
           ];
 
