@@ -13,6 +13,7 @@ using Printf: @sprintf
 using LinearAlgebra
 using Plots
 using StatsPlots
+@reexport using StatsPlots
 using Zygote
 using FiniteDiff
 using Showoff: showoff
@@ -21,6 +22,7 @@ using DataFrames
 using Random
 using CSV
 using ChainRules
+using ChainRulesCore
 
 
 using CUDA
@@ -67,6 +69,7 @@ using LightGraphs: DiGraph, add_edge!, outneighbors,
        topological_sort_by_dfs, vertices
 import StatsBase: autocor, autocov, countmap, counts, describe, predict,
        quantile, sample, sem, summarystats
+import DataStructures: PriorityQueue, dequeue!
 
 include("distributions/pdmats2.jl")
 using .PDMats2
@@ -228,20 +231,22 @@ abstract type AbstractChains end
 struct Chains <: AbstractChains
   value::Array{Float64, 3}
   range::StepRange{Int, Int}
-  names::Vector{S} where S <: AbstractString
+  names::Vector{AbstractString}
   chains::Vector{Int}
-  trees::Array{S, 3} where S <: AbstractString
+  trees::Array{AbstractString, 3}
   moves::Array{Int, 1}
+  tree_names::Vector{AbstractString}
 end
 
 struct ModelChains <: AbstractChains
   value::Array{Float64, 3}
   range::StepRange{Int, Int}
-  names::Vector{S} where S <: AbstractString
+  names::Vector{AbstractString}
   chains::Vector{Int}
   model::Model
-  trees::Array{S, 3} where S <: AbstractString
+  trees::Array{AbstractString, 3}
   moves::Array{Int, 1}
+  tree_names::Vector{AbstractString}
 end
 
 
@@ -312,6 +317,7 @@ include("Tree/Tree_Clustering.jl")
 include("Tree/Tree_Ladderizing.jl")
 include("Tree/Tree_Pruning.jl")
 include("Tree/Tree_Consensus.jl")
+include("Tree/Tree_Statistics.jl")
 
 
 include("Parser/Parser.jl")
@@ -319,6 +325,7 @@ include("Parser/ParseCSV.jl")
 include("Parser/ParseNexus.jl")
 include("Parser/ParseNewick.jl")
 include("Sampler/PNUTS.jl")
+include("Sampler/EmpiricalMove.jl")
 
 include("Substitution/SubstitutionMat.jl")
 
@@ -327,6 +334,8 @@ include("Utils/FileIO.jl")
 
 include("Likelihood/LikelihoodCalculator_Node.jl")
 include("Likelihood/Prior.jl")
+include("Likelihood/Rates.jl")
+include("Likelihood/SubstitutionModels.jl")
 #################### Exports ####################
 
 export
@@ -430,7 +439,8 @@ export
   RWM, RWMVariate,
   Slice, SliceMultivariate, SliceUnivariate,
   SliceSimplex, SliceSimplexVariate,
-  PNUTS, PNUTSVariate
+  PNUTS, PNUTSVariate,
+  Empirical, EmpiricalVariate
 
 export
   make_tree_with_data,
@@ -469,11 +479,15 @@ export
   path_length,
   get_sister,
   get_leaves,
+  check_leafsets,
   neighbor_joining,
   upgma,
   prune_tree!, prune_tree,
   ladderize_tree!, ladderize_tree,
-  majority_consensus_tree
+  majority_consensus_tree,
+  discrete_gamma_rates,
+  Restriction, JC, GTR,
+  ASDSF
 
 
 export
