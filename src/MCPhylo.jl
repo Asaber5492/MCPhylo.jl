@@ -440,7 +440,8 @@ export
   Slice, SliceMultivariate, SliceUnivariate,
   SliceSimplex, SliceSimplexVariate,
   PNUTS, PNUTSVariate,
-  Empirical, EmpiricalVariate
+  Empirical, EmpiricalVariate,
+  ABCT
 
 export
   make_tree_with_data,
