@@ -284,26 +284,6 @@ This function actually calls FelsensteinFunction() and is used in both fill_in_t
 """
 function assign_value(langname::String,tree::Node,IoI::Int64,ntax::Int64,nchar::Int64,pi_::Float64,rates::Float64)
 	treecopy = deepcopy(tree)
-	#global already_removed = []
-	#this for loop handles pruning; I know it's not perfectly implemented, but it works and I didn't want to change it until I figured out the
-	#issue with false negatives
-	# for node in post_order(treecopy)
-	# 	#"if node has an unknown value in the same index as the node we're inferring a value for, isn't the root,
-	# 	#isn't the same node we're inferring a value for, is a leaf, and hasn't already been removed..."
-	# 	if node.data[1,IoI]  == 3.0 && !node.root && node.name != langname && isempty(node.children) && !(node.num in already_removed)
-	# 		while true
-	# 			#this while loop prunes superfluous internal nodes
-	# 			mom = node.mother
-	# 			push!(already_removed,node.num)
-	# 			remove_child!(node.mother,node)
-	# 			if isempty(mom.children)
-	# 				node = mom
-	# 			else
-	# 				break
-	# 			end #ifelse
-	# 		end #while
-	# 	end #if
-	# end #for
 
 	for node in get_leaves(treecopy)
 		if node.name != langname && node.data[1,IoI] == 3.0
@@ -344,12 +324,6 @@ function assign_value(langname::String,tree::Node,IoI::Int64,ntax::Int64,nchar::
 		# println(tree_collection[1], "\n\n", tree_collection[2], "\n\n", tree_collection[3])
 		FelsensteinFunction(post_order(treecopy), pi_, ind_rate, dataplaceholder, nchar, blv)
 
-		# if treecopy.data[1,IoI] == NaN
-		# 	println(treecopy.name)
-		# 	println(IoI)
-		# 	println(treecopy.data[1,:])
-		# 	println(treecopy.data[2,:])
-		# end #if
 		push!(felsenstein_results,treecopy.data[1,IoI])
 		treecopy.data[1,IoI] = 3.0
 	end #for
